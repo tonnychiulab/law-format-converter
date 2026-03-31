@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>法規格式轉換器 Pro - 支援 PDF</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .badge {
+            display: inline-block;
+            background: #28a745;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        .upload-section {
+            background: #f8f9fa;
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-section:hover {
+            border-color: #764ba2;
+            background: #f0f1ff;
+        }
+
+        .upload-section.dragover {
+            border-color: #764ba2;
+            background: #e8e9ff;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .upload-section h3 {
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .upload-section p {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        .supported-formats {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 15px;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .file-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .file-button:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+        }
+
+        .file-info {
+            background: #f0f1ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .file-info.show {
+            display: block;
+        }
+
+        .file-info p {
+            margin: 5px 0;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #eee;
+            border-radius: 2px;
+            margin-top: 10px;
+            display: none;
+            overflow: hidden;
+        }
+
+        .progress-bar.show {
+            display: block;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #667eea;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .options-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .options-section.show {
+            display: block;
+        }
+
+        .option-group {
+            margin-bottom: 20px;
+        }
+
+        .option-group label {
+            display: block;
+            color: #333;
+            font-weight: 500;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 20px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .radio-option input[type="radio"] {
+            cursor: pointer;
+        }
+
+        .radio-option label {
+            margin: 0;
+            cursor: pointer;
+            font-weight: normal;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+        }
+
+        .convert-button {
+            flex: 1;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .convert-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .convert-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .download-button {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            display: none;
+        }
+
+        .download-button.show {
+            display: inline-block;
+        }
+
+        .download-button:hover {
+            background: #218838;
+            transform: translateY(-2px);
+        }
+
+        .preview-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .preview-section.show {
+            display: block;
+        }
+
+        .preview-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        .preview-content {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            color: #333;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .status-message {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+            font-size: 14px;
+        }
+
+        .status-message.show {
+            display: block;
+        }
+
+        .status-message.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .status-message.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .status-message.info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+
+        .tips {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+            font-size: 13px;
+            color: #555;
+        }
+
+        .tips strong {
+            display: block;
+            margin-bottom: 8px;
+            color: #1976D2;
+        }
+
+        .tips ul {
+            margin-left: 20px;
+        }
+
+        .tips li {
+            margin: 5px 0;
+        }
+
+        .file-type-indicator {
+            display: inline-block;
+            background: #e7f3ff;
+            color: #1976D2;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 22px;
+            }
+
+            .radio-group {
+                flex-direction: column;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 法規格式轉換器 Pro</h1>
+            <p>支援 PDF 和文字檔，自動轉換為 AnythingLLM 格式</p>
+            <span class="badge">✨ 支援 PDF 直接上傳</span>
+        </div>
+
+        <div id="statusMessage" class="status-message"></div>
+
+        <div class="upload-section" id="uploadSection">
+            <div class="upload-icon">📁</div>
+            <h3>上傳法規檔案</h3>
+            <div class="supported-formats">
+                支援：PDF、TXT、Markdown、JSON、JSONL
+            </div>
+            <button class="file-button" onclick="document.getElementById('fileInput').click()">
+                選擇檔案或拖拖放
+            </button>
+            <input type="file" id="fileInput" accept=".pdf,.txt,.md,.json,.jsonl">
+        </div>
+
+        <div id="fileInfo" class="file-info">
+            <p><strong>檔案：</strong> <span id="fileName"></span> <span id="fileType" class="file-type-indicator"></span></p>
+            <p><strong>大小：</strong> <span id="fileSize"></span></p>
+            <p><strong>狀態：</strong> <span id="fileStatus" style="color: #28a745;">✓ 已載入</span></p>
+            <div id="progressBar" class="progress-bar">
+                <div class="progress-fill"></div>
+            </div>
+        </div>
+
+        <div class="options-section" id="optionsSection">
+            <div class="option-group">
+                <label>輸出格式選擇</label>
+                <div class="radio-group">
+                    <div class="radio-option">
+                        <input type="radio" id="formatTxt" name="format" value="txt" checked>
+                        <label for="formatTxt">📄 TXT（推薦）</label>
+                    </div>
+                    <div class="radio-option">
+                        <input type="radio" id="formatMd" name="format" value="md">
+                        <label for="formatMd">📝 Markdown</label>
+                    </div>
+                    <div class="radio-option">
+                        <input type="radio" id="formatJson" name="format" value="json">
+                        <label for="formatJson">🔧 JSON</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="option-group">
+                <label for="lawName">法規名稱（選填）</label>
+                <textarea id="lawName" placeholder="例如：資通安全管理法"></textarea>
+            </div>
+
+            <div class="button-group">
+                <button class="convert-button" onclick="convertFile()">🚀 開始轉換</button>
+                <button class="download-button" id="downloadBtn" onclick="downloadFile()">
+                    ⬇️ 下載檔案
+                </button>
+            </div>
+        </div>
+
+        <div id="previewSection" class="preview-section">
+            <h3>📖 預覽</h3>
+            <div class="preview-content" id="previewContent"></div>
+        </div>
+
+        <div class="tips">
+            <strong>💡 使用提示</strong>
+            <ul>
+                <li>✅ 支援 PDF 檔案（直接提取文字，無需轉換）</li>
+                <li>✅ 支援任何純文字格式（TXT、MD、JSON）</li>
+                <li>✅ 自動檢測並保留法條結構</li>
+                <li>✅ 轉換完成後可預覽，滿意再下載</li>
+                <li>✅ 所有處理都在瀏覽器執行（隱私安全）</li>
+                <li>⚠️ 掃描版 PDF（圖片）無法提取，請用 OCR 工具先轉</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // 設定 PDF.js worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        let fileContent = null;
+        let fileName = null;
+        let fileType = null;
+        let convertedData = null;
+
+        // 文件選擇
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            fileName = file.name;
+            fileType = file.type;
+            const fileSize = (file.size / 1024).toFixed(2);
+
+            // 判斷檔案類型
+            let typeLabel = '未知';
+            if (file.name.endsWith('.pdf')) {
+                typeLabel = 'PDF';
+                handlePDF(file, fileSize);
+            } else if (file.name.endsWith('.txt')) {
+                typeLabel = 'TXT';
+                handleTextFile(file, fileSize);
+            } else if (file.name.endsWith('.md')) {
+                typeLabel = 'Markdown';
+                handleTextFile(file, fileSize);
+            } else if (file.name.endsWith('.json') || file.name.endsWith('.jsonl')) {
+                typeLabel = 'JSON';
+                handleTextFile(file, fileSize);
+            }
+
+            document.getElementById('fileType').textContent = typeLabel;
+        });
+
+        // 處理文字檔案
+        function handleTextFile(file, fileSize) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                fileContent = event.target.result;
+                
+                document.getElementById('fileName').textContent = fileName;
+                document.getElementById('fileSize').textContent = fileSize + ' KB';
+                document.getElementById('fileInfo').classList.add('show');
+                document.getElementById('optionsSection').classList.add('show');
+                
+                showStatus('檔案已載入，可以選擇轉換格式', 'info');
+            };
+            reader.readAsText(file);
+        }
+
+        // 處理 PDF 檔案
+        async function handlePDF(file, fileSize) {
+            document.getElementById('fileName').textContent = fileName;
+            document.getElementById('fileSize').textContent = fileSize + ' KB';
+            document.getElementById('fileInfo').classList.add('show');
+            
+            showStatus('正在提取 PDF 文字...', 'info');
+            
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                
+                let text = '';
+                const totalPages = pdf.numPages;
+                
+                for (let i = 1; i <= totalPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    const pageText = textContent.items.map(item => item.str).join(' ');
+                    text += pageText + '\n';
+                    
+                    // 更新進度
+                    const progress = (i / totalPages) * 100;
+                    document.querySelector('.progress-fill').style.width = progress + '%';
+                }
+                
+                fileContent = text;
+                document.getElementById('optionsSection').classList.add('show');
+                document.getElementById('progressBar').classList.remove('show');
+                
+                showStatus(`✓ 已提取 ${totalPages} 頁 PDF，可以開始轉換`, 'success');
+            } catch (error) {
+                showStatus('❌ PDF 提取失敗：' + error.message, 'error');
+            }
+        }
+
+        // 拖拖放
+        const uploadSection = document.getElementById('uploadSection');
+        
+        uploadSection.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadSection.classList.add('dragover');
+        });
+
+        uploadSection.addEventListener('dragleave', () => {
+            uploadSection.classList.remove('dragover');
+        });
+
+        uploadSection.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadSection.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                document.getElementById('fileInput').files = e.dataTransfer.files;
+                const event = new Event('change', { bubbles: true });
+                document.getElementById('fileInput').dispatchEvent(event);
+            }
+        });
+
+        // 轉換邏輯
+        function convertFile() {
+            if (!fileContent) {
+                showStatus('請先選擇檔案', 'error');
+                return;
+            }
+
+            const format = document.querySelector('input[name="format"]:checked').value;
+            const lawName = document.getElementById('lawName').value || '法規資料';
+
+            showStatus('正在轉換...', 'info');
+
+            try {
+                if (format === 'txt') {
+                    convertedData = convertToTxt(fileContent, lawName);
+                } else if (format === 'md') {
+                    convertedData = convertToMarkdown(fileContent, lawName);
+                } else if (format === 'json') {
+                    convertedData = convertToJson(fileContent, lawName);
+                }
+
+                // 顯示預覽
+                const preview = document.getElementById('previewContent');
+                const previewText = convertedData.substring(0, 2000);
+                preview.textContent = previewText;
+                if (convertedData.length > 2000) {
+                    preview.textContent += '\n\n... （還有 ' + (convertedData.length - 2000) + ' 字符，下載檢視完整版本）';
+                }
+
+                document.getElementById('previewSection').classList.add('show');
+                document.getElementById('downloadBtn').classList.add('show');
+
+                showStatus('✓ 轉換完成！下載檔案即可使用', 'success');
+            } catch (error) {
+                showStatus('轉換失敗：' + error.message, 'error');
+            }
+        }
+
+        // 格式轉換函數
+        function convertToTxt(content, lawName) {
+            let output = '═'.repeat(80) + '\n';
+            output += lawName + ' - 法條匯編\n';
+            output += '═'.repeat(80) + '\n\n';
+
+            const lines = content.split('\n');
+            for (let line of lines) {
+                if (line.trim().length === 0) continue;
+                if (/第\s*\d+\s*條|條號|第.*條/.test(line)) {
+                    output += '\n' + '─'.repeat(80) + '\n';
+                    output += line.trim() + '\n';
+                    output += '─'.repeat(80) + '\n';
+                } else {
+                    output += line + '\n';
+                }
+            }
+
+            output += '\n' + '═'.repeat(80) + '\n';
+            return output;
+        }
+
+        function convertToMarkdown(content, lawName) {
+            let output = `# ${lawName} - 法條匯編\n\n`;
+            const lines = content.split('\n');
+            for (let line of lines) {
+                if (line.trim().length === 0) continue;
+                if (/第\s*\d+\s*條|條號|第.*條/.test(line)) {
+                    output += `\n## ${line.trim()}\n\n`;
+                } else {
+                    output += line + '\n';
+                }
+            }
+            return output;
+        }
+
+        function convertToJson(content, lawName) {
+            const lines = content.split('\n').filter(l => l.trim().length > 0);
+            const articles = [];
+            let currentArticle = null;
+
+            for (let line of lines) {
+                if (/第\s*\d+\s*條|條號|第.*條/.test(line)) {
+                    if (currentArticle) articles.push(currentArticle);
+                    currentArticle = {
+                        "法規名稱": lawName,
+                        "條號": line.trim(),
+                        "內容": "",
+                        "字數": 0
+                    };
+                } else if (currentArticle) {
+                    currentArticle.內容 += line.trim() + '\n';
+                }
+            }
+
+            if (currentArticle) articles.push(currentArticle);
+
+            articles.forEach(a => {
+                a.字數 = a.內容.length;
+                a.內容 = a.內容.trim();
+            });
+
+            return JSON.stringify(articles, null, 2);
+        }
+
+        // 下載檔案
+        function downloadFile() {
+            if (!convertedData) return;
+
+            const format = document.querySelector('input[name="format"]:checked').value;
+            const baseName = fileName.replace(/\.[^/.]+$/, "");
+            const downloadName = `${baseName}_for_anythingllm.${format}`;
+
+            const element = document.createElement('a');
+            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(convertedData));
+            element.setAttribute('download', downloadName);
+            element.style.display = 'none';
+            document.body.appendChild(element);
+            element.click();
+            document.body.removeChild(element);
+
+            showStatus('✓ 檔案已下載：' + downloadName, 'success');
+        }
+
+        // 狀態訊息
+        function showStatus(message, type) {
+            const el = document.getElementById('statusMessage');
+            el.textContent = message;
+            el.className = 'status-message show ' + type;
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    el.classList.remove('show');
+                }, 5000);
+            }
+        }
+    </script>
+</body>
+</html>
